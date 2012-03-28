@@ -3,9 +3,7 @@
 from DataFormats.FWLite import Events
 from DataFormats.FWLite import Handle
 
-import sys
-sys.path.append("../")
-import cmsutilities
+from ..cmsutilities import get_PF_isolation
 
 ele_iso_cut = 0.17
 muon_iso_cut = 0.2
@@ -80,19 +78,19 @@ class CMSEvent(object):
     
     def get_isolated_electrons(self):
         """Return the electrons with relative PF isolation < ele_iso_cut"""
-        return [e for e in self.get_electrons() if cmsutilities.get_PF_isolation(e) < ele_iso_cut]
+        return [e for e in self.get_electrons() if get_PF_isolation(e) < ele_iso_cut]
     
     def get_nonisolated_electrons(self):
         """Return the electrons with relative PF isolation > ele_iso_cut"""
-        return [e for e in self.get_electrons() if cmsutilities.get_PF_isolation(e) > ele_iso_cut]
+        return [e for e in self.get_electrons() if get_PF_isolation(e) > ele_iso_cut]
     
     def get_isolated_muons(self):
         """Return the muons with relative PF isolation < muons_iso_cut"""
-        return [m for m in self.get_muons() if cmsutilities.get_PF_isolation(m) < muon_iso_cut]
+        return [m for m in self.get_muons() if get_PF_isolation(m) < muon_iso_cut]
     
     def get_nonisolated_muons(self):
         """Return the muons with relative PF isolation > muons_iso_cut"""
-        return [m for m in self.get_muons() if cmsutilities.get_PF_isolation(m) > muon_iso_cut]
+        return [m for m in self.get_muons() if get_PF_isolation(m) > muon_iso_cut]
     
     def get_isolated_leptons(self):
         """Return the leptons that pass the relative isolation cuts"""
@@ -145,10 +143,10 @@ class CMSEventGetter(object):
 
         ele_handle, mu_handle, jet_handle, met_handle = handles
 
-        electrons = cmsutilities.get_list_from_handle(fwlite_event, ele_handle, self.electron_collection)
-        muons     = cmsutilities.get_list_from_handle(fwlite_event, mu_handle, self.muon_collection)
-        jets      = cmsutilities.get_list_from_handle(fwlite_event, jet_handle, self.jet_collection)
-        met       = cmsutilities.get_list_from_handle(fwlite_event, met_handle, self.met_collection)[0]
+        electrons = get_list_from_handle(fwlite_event, ele_handle, self.electron_collection)
+        muons     = get_list_from_handle(fwlite_event, mu_handle, self.muon_collection)
+        jets      = get_list_from_handle(fwlite_event, jet_handle, self.jet_collection)
+        met       = get_list_from_handle(fwlite_event, met_handle, self.met_collection)[0]
 
         
         event = self._parent(electrons, muons, jets, met)
