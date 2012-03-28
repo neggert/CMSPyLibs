@@ -1,6 +1,8 @@
 #! /usr/bin/env python
 
 import event
+import sys
+sys.path.append("../")
 import cmsutilities
 
 class CMSDileptonEvent(event.CMSEvent):

@@ -2,6 +2,9 @@
 
 from DataFormats.FWLite import Events
 from DataFormats.FWLite import Handle
+
+import sys
+sys.path.append("../")
 import cmsutilities
 
 ele_iso_cut = 0.17
