@@ -1,11 +1,9 @@
 #! /usr/bin/env python
 
-import event
-import sys
-sys.path.append("../")
-import cmsutilities
+from .event import CMSEvent, CMSEventGetter
+from  ..cmsutilities import get_TLorentzVector
 
-class CMSDileptonEvent(event.CMSEvent):
+class CMSDileptonEvent(CMSEvent):
     """Event class which guarantees the event has two leptons"""
     def __init__(self, electrons, muons, jets, met):
         """Make sure that event has at least two leptons"""
@@ -15,12 +13,12 @@ class CMSDileptonEvent(event.CMSEvent):
     
     def upstream_of_leptons(self):
         """Get 4-momentum upstream of dilepton pair and MET"""
-        p4l1 = cmsutilities.get_TLorentzVector(self.get_leptons()[0])
-        p4l2 = cmsutilities.get_TLorentzVector(self.get_leptons()[1])
-        p4met = cmsutilities.get_TLorentzVector(self.get_met())
+        p4l1 = get_TLorentzVector(self.get_leptons()[0])
+        p4l2 = get_TLorentzVector(self.get_leptons()[1])
+        p4met = get_TLorentzVector(self.get_met())
         return -p4met-p4l1-p4l2
 
-class CMSDileptonEventGetter(event.CMSEventGetter):
+class CMSDileptonEventGetter(CMSEventGetter):
     """Provides a generator which feeds events from file(s). Skips events that don't have at least two leptons"""
     _parent = CMSDileptonEvent
 
