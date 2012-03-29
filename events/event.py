@@ -3,7 +3,7 @@
 from DataFormats.FWLite import Events
 from DataFormats.FWLite import Handle
 
-from ..cmsutilities import get_PF_isolation
+from ..cmsutilities import get_PF_isolation, get_list_from_handle
 
 ele_iso_cut = 0.17
 muon_iso_cut = 0.2
