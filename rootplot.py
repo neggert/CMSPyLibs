@@ -1,4 +1,5 @@
 import ROOT
+from array import array
 
 """
 Wrapper functions to produce ROOT histograms and graphs
