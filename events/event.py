@@ -5,13 +5,13 @@ from DataFormats.FWLite import Handle
 
 from ..cmsutilities import get_PF_isolation, get_list_from_handle
 
-ele_iso_cut = 0.17
-muon_iso_cut = 0.2
-jet_btag_cut = 1.7
-jet_btag = "trackCountingHighEffBJetTags"
-
 class CMSEvent(object):
     """General class to provide a nice python interface to a CMS event in FWLite"""
+    ele_iso_cut = 0.17
+    muon_iso_cut = 0.2
+    jet_btag_cut = 1.7
+    jet_btag = "trackCountingHighEffBJetTags"
+
     def __init__(self, electrons, muons, jets, met):
         """Initialize with collections of objects, except MET, which is a single object"""
         self.electrons = electrons
@@ -102,11 +102,11 @@ class CMSEvent(object):
     
     def get_tagged_jets(self):
         """Return the jets that pass the b-tagging cuts defined in the module"""
-        return [j for j in self.get_jets() if j.bDiscriminator(jet_btag) > jet_btag_cut]
+        return [j for j in self.get_jets() if j.bDiscriminator(self.jet_btag) > self.jet_btag_cut]
     
     def get_untagged_jets(self):
         """Return the jets that fail the b-tagging cuts defined in the module"""
-        return [j for j in self.get_jets() if j.bDiscriminator(jet_btag) < jet_btag_cut]
+        return [j for j in self.get_jets() if j.bDiscriminator(self.jet_btag) < self.jet_btag_cut]
 
 class CMSEventGetter(object):
     """The main purpose of this class is to supply a generator (events) which feeds CMSEvents from a file.
