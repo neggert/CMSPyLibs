@@ -1,0 +1,13 @@
+CMSPyLibs is a set of utilities made for dealing with CMSSW tuples in a more pythonic way than is provided by the python FWLite interface. It's primarily implemented as a wrapper around the FWLite interface.
+
+modules: 
+
+cmsutilities - This module contains some functions that are of general use, such as returning a python list given an edm handle, or getting a list of jets from event. There are also a few general calculations that were useful to me, such as getting the phi resolution of a four vector given it's covariance matrix
+
+general_calc - This module is for calculating various MT2/MCT variables. It may not belong in this package, but I use it a lot, so it's there.
+
+plot.py - Useful plotting tools. A lot of these duplicate ROOT functionality in matplotlib
+
+rootplot.py - The opposite of plot.py. This provides interfaces similar to matplotlibs for root plotting utilities
+
+events - Utilities for getting events from EDM files
