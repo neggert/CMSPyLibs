@@ -36,7 +36,7 @@ def hist_errorbars( data, xerrs=True, *args, **kwargs) :
     for key, value in kwargs.iteritems() :
         if key in inspect.getargspec(plt.errorbar).args :
             histkwargs[key] = value
-    plt.errorbar(bincenters, histvals, yerrs, xerrs, fmt=".", **ebkwargs)
+    out = plt.errorbar(bincenters, histvals, yerrs, xerrs, fmt=".", **ebkwargs)
 
     if 'log' in kwargs.keys() :
         if kwargs['log'] :
@@ -44,3 +44,5 @@ def hist_errorbars( data, xerrs=True, *args, **kwargs) :
 
     if 'range' in kwargs.keys() :
         plt.xlim(*kwargs['range'])
+
+    return out
