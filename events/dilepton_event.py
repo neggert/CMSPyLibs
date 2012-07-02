@@ -1,16 +1,16 @@
 #! /usr/bin/env python
 
-from .event import CMSEvent, CMSEventGetter
+from event import CMSEvent, CMSEventGetter
 from  ..cmsutilities import get_TLorentzVector
 
 class CMSDileptonEvent(CMSEvent):
     """Event class which guarantees the event has two leptons"""
-    def __init__(self, electrons, muons, jets, met):
+    def __init__(self, eventid, electrons, muons, jets, met):
         """Make sure that event has at least two leptons"""
         if (len(electrons)+len(muons) < 2):
             raise ValueError('DileptonEvent must have at least two leptons')
-        super(CMSDileptonEvent, self).__init__(electrons, muons, jets, met)
-    
+        super(CMSDileptonEvent, self).__init__(eventid, electrons, muons, jets, met)
+
     def upstream_of_leptons(self):
         """Get 4-momentum upstream of dilepton pair and MET"""
         p4l1 = get_TLorentzVector(self.get_leptons()[0])

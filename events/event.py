@@ -48,6 +48,13 @@ class EventID(object) :
     def __repr__(self) :
         return "Run {0}, Lumi {1}, Event {2}".format(self.run_number, self.luminosity_block, self.event_number)
 
+    def __hash__(self) :
+        return hash(str(self.run_number)+str(self.luminosity_block)+str(self.event_number))
+
+    def __eq__(self, other) :
+        return (self.run_number == other.run_number) and (self.luminosity_block == other.luminosity_block)\
+                and (self.event_number == other.event_number)
+
 
 class CMSEvent(object):
     """General class to provide a nice python interface to a CMS event in FWLite"""
