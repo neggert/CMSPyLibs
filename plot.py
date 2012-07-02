@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import inspect
 
-def hist_errorbars( data, xerrs=True, *args, **kwargs) :
+def hist_errorbars( data, xerrs=True, color="k", *args, **kwargs) :
     """Plot a histogram with error bars. Accepts any kwarg accepted by either numpy.histogram or pyplot.errorbar"""
     # pop off normed kwarg, since we want to handle it specially
     norm = False
@@ -36,7 +36,7 @@ def hist_errorbars( data, xerrs=True, *args, **kwargs) :
     for key, value in kwargs.iteritems() :
         if key in inspect.getargspec(plt.errorbar).args :
             histkwargs[key] = value
-    out = plt.errorbar(bincenters, histvals, yerrs, xerrs, fmt=".", **ebkwargs)
+    out = plt.errorbar(bincenters, histvals, yerrs, xerrs, fmt=".", color=color, **ebkwargs)
 
     if 'log' in kwargs.keys() :
         if kwargs['log'] :
