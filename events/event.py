@@ -63,13 +63,15 @@ class CMSEvent(object):
     jet_btag_cut = 1.7
     jet_btag = "trackCountingHighEffBJetTags"
 
-    def __init__(self, eventID, electrons, muons, jets, met):
+    def __init__(self, eventID, vertices, electrons, muons, jets, met, metadata={}):
         """Initialize with collections of objects, except MET, which is a single object"""
         self.eventID = eventID
+        self.vertices = vertices
         self.electrons = electrons
         self.muons = muons
         self.jets = jets
         self.met = met
+        self.metadata = metadata
 
     def __repr__(self):
         """Print information about the event"""
@@ -162,6 +164,10 @@ class CMSEvent(object):
         """Return the jets that fail the b-tagging cuts defined in the module"""
         return [j for j in self.get_jets() if j.bDiscriminator(self.jet_btag) < self.jet_btag_cut]
 
+    def get_vertices(self):
+        """Return the vertex collection"""
+        return self.vertices
+
 class CMSEventGetter(object):
     """The main purpose of this class is to supply a generator (events) which feeds CMSEvents from a file.
     The rest of the class is to provide an interface to change parameters"""
@@ -174,6 +180,7 @@ class CMSEventGetter(object):
         self.muon_collection = "selectedPatMuonsPFlow"
         self.jet_collection = "selectedPatJetsPFlow"
         self.met_collection = "patMETsPFlow"
+        self.vertex_collection = "goodOfflinePrimaryVertices"
 
 
     def set_electron_collection(self, collection_name):
@@ -192,21 +199,33 @@ class CMSEventGetter(object):
         """Set the name of the MET collection"""
         self.met_collection = collection_name
 
+    def get_num_pu_vertices(self, fwlite_event):
+        """ Get the number of PU vertices"""
+        h = Handle("std::vector<PileupSummaryInfo>")
+        try :
+            puInfos = get_list_from_handle(fwlite_event, h, "addPileupInfo")
+        except Exception :
+            return None
+        return sum((pvi.getPU_NumInteractions() for pvi in puInfos if pvi.getBunchCrossing()==0))
+
     def make_event(self, fwlite_event, handles):
         """Create a CMSEvent from the input FWLite event"""
 
-        ele_handle, mu_handle, jet_handle, met_handle = handles
+        ele_handle, mu_handle, jet_handle, met_handle, vertex_handle = handles
 
         electrons = get_list_from_handle(fwlite_event, ele_handle, self.electron_collection)
         muons     = get_list_from_handle(fwlite_event, mu_handle, self.muon_collection)
         jets      = get_list_from_handle(fwlite_event, jet_handle, self.jet_collection)
         met       = get_list_from_handle(fwlite_event, met_handle, self.met_collection)[0]
+        vertices  = get_list_from_handle(fwlite_event, vertex_handle, self.vertex_collection)
 
         eventID = EventID(fwlite_event)
 
 
-        event = self._parent(eventID, electrons, muons, jets, met)
-        del electrons, muons, jets, met
+        event = self._parent(eventID, vertices, electrons, muons, jets, met)
+        del electrons, muons, jets, met, vertices
+
+        event.metadata['num_pu_vertices'] = self.get_num_pu_vertices( fwlite_event )
 
         return event
 
@@ -223,7 +242,8 @@ class CMSEventGetter(object):
         mu_handle = Handle("std::vector<pat::Muon>")
         jet_handle = Handle("std::vector<pat::Jet>")
         met_handle = Handle("std::vector<pat::MET>")
-        handles = (ele_handle, mu_handle, jet_handle, met_handle)
+        vertex_handle = Handle("std::vector<reco::Vertex>")
+        handles = (ele_handle, mu_handle, jet_handle, met_handle, vertex_handle)
         for fwlite_event in fwlite_events:
             event = self.make_event(fwlite_event, handles)
             if self.passes_cuts(event):
