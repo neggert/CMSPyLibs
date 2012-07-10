@@ -225,7 +225,7 @@ class CMSEventGetter(object):
         event = self._parent(eventID, vertices, electrons, muons, jets, met)
         del electrons, muons, jets, met, vertices
 
-        event.metadata['num_pu_vertices'] = self.get_num_pu_vertices( fwlite_event )
+        #event.metadata['num_pu_vertices'] = self.get_num_pu_vertices( fwlite_event )
 
         return event
 
