@@ -181,6 +181,7 @@ class CMSEventGetter(object):
         self.jet_collection = "selectedPatJetsPFlow"
         self.met_collection = "patMETsPFlow"
         self.vertex_collection = "goodOfflinePrimaryVertices"
+        self.do_PU = False
 
 
     def set_electron_collection(self, collection_name):
@@ -208,6 +209,12 @@ class CMSEventGetter(object):
             return None
         return sum((pvi.getPU_NumInteractions() for pvi in puInfos if pvi.getBunchCrossing()==0))
 
+    def get_sms_params(self, fwlite_event):
+        """ Get the SMS model parameters"""
+        h = Handle("std::vector<double>")
+        sms_params = get_list_from_handle( fwlite_event, h, ['parameterPointProducer', 'modelParameters'])
+        return sms_params
+
     def make_event(self, fwlite_event, handles):
         """Create a CMSEvent from the input FWLite event"""
 
@@ -225,7 +232,8 @@ class CMSEventGetter(object):
         event = self._parent(eventID, vertices, electrons, muons, jets, met)
         del electrons, muons, jets, met, vertices
 
-        #event.metadata['num_pu_vertices'] = self.get_num_pu_vertices( fwlite_event )
+        if self.do_PU :
+            event.metadata['num_pu_vertices'] = self.get_num_pu_vertices( fwlite_event )
 
         return event
 
