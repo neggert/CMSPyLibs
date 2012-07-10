@@ -182,6 +182,7 @@ class CMSEventGetter(object):
         self.met_collection = "patMETsPFlow"
         self.vertex_collection = "goodOfflinePrimaryVertices"
         self.do_PU = False
+        self.do_SMS = False
 
 
     def set_electron_collection(self, collection_name):
@@ -234,6 +235,8 @@ class CMSEventGetter(object):
 
         if self.do_PU :
             event.metadata['num_pu_vertices'] = self.get_num_pu_vertices( fwlite_event )
+        if self.do_SMS :
+            event.metadata['modelParams'] = self.get_sms_params(fwlite_event)
 
         return event
 
