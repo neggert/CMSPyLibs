@@ -1,3 +1,4 @@
+import logging
 class EventCounter :
     """Class that counts events"""
     maxEvents = -1
@@ -27,7 +28,8 @@ class EventCounter :
         if (self.eventNum >= 10*self.printRate and not self.constPrintRate) :
             self.printRate *= 10
         if (self.eventNum%self.printRate == 0 and self.printOut) :
-            print "Event number", self.eventNum
+            logging.info("Event number "+str(self.eventNum))
+        logging.debug("Event number "+str(self.eventNum))
         self.eventNum += 1
         if (self.eventNum <= self.maxEvents or self.maxEvents < 0) :
             return True
