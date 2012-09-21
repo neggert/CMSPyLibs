@@ -181,6 +181,14 @@ class CMSEventGetter(object):
         self.jet_collection = "selectedPatJetsPFlow"
         self.met_collection = "patMETsPFlow"
         self.vertex_collection = "goodOfflinePrimaryVertices"
+        self.ele_handle = Handle("std::vector<pat::Electron>")
+        self.mu_handle = Handle("std::vector<pat::Muon>")
+        self.jet_handle = Handle("std::vector<pat::Jet>")
+        self.met_handle = Handle("std::vector<pat::MET>")
+        self.vertex_handle = Handle("std::vector<reco::Vertex>")
+        self.pu_handle = Handle("std::vector<PileupSummaryInfo>")
+        self.vdouble_handle = Handle("std::vector<double>")
+        self.double_handle = Handle("double")
         self.do_PU = False
         self.do_SMS = False
 
@@ -203,29 +211,31 @@ class CMSEventGetter(object):
 
     def get_num_pu_vertices(self, fwlite_event):
         """ Get the number of PU vertices"""
-        h = Handle("std::vector<PileupSummaryInfo>")
         try :
-            puInfos = get_list_from_handle(fwlite_event, h, "addPileupInfo")
+            puInfos = get_list_from_handle(fwlite_event, handle, "addPileupInfo")
         except Exception :
             return None
         return sum((pvi.getPU_NumInteractions() for pvi in puInfos if pvi.getBunchCrossing()==0))
 
     def get_sms_params(self, fwlite_event):
         """ Get the SMS model parameters"""
-        h = Handle("std::vector<double>")
-        sms_params = get_list_from_handle( fwlite_event, h, ['parameterPointProducer', 'modelParameters'])
+        sms_params = get_list_from_handle( fwlite_event, self.vdouble_handle,
+                       ['parameterPointProducer', 'modelParameters'])
         return sms_params
 
-    def make_event(self, fwlite_event, handles):
+    def get_rho(self, fwlite_event):
+        """Get the rho parameter"""
+        fwlite_event.getByLabel( ["kt6PFJetsForIsolation", "rho"], self.double_handle )
+        return self.double_handle.product()[0]
+
+    def make_event(self, fwlite_event):
         """Create a CMSEvent from the input FWLite event"""
 
-        ele_handle, mu_handle, jet_handle, met_handle, vertex_handle = handles
-
-        electrons = get_list_from_handle(fwlite_event, ele_handle, self.electron_collection)
-        muons     = get_list_from_handle(fwlite_event, mu_handle, self.muon_collection)
-        jets      = get_list_from_handle(fwlite_event, jet_handle, self.jet_collection)
-        met       = get_list_from_handle(fwlite_event, met_handle, self.met_collection)[0]
-        vertices  = get_list_from_handle(fwlite_event, vertex_handle, self.vertex_collection)
+        electrons = get_list_from_handle(fwlite_event, self.ele_handle, self.electron_collection)
+        muons     = get_list_from_handle(fwlite_event, self.mu_handle, self.muon_collection)
+        jets      = get_list_from_handle(fwlite_event, self.jet_handle, self.jet_collection)
+        met       = get_list_from_handle(fwlite_event, self.met_handle, self.met_collection)[0]
+        vertices  = get_list_from_handle(fwlite_event, self.vertex_handle, self.vertex_collection)
 
         eventID = EventID(fwlite_event)
 
@@ -238,6 +248,8 @@ class CMSEventGetter(object):
         if self.do_SMS :
             event.metadata['modelParams'] = self.get_sms_params(fwlite_event)
 
+        event.metadata['rho'] = self.get_rho(fwlite_event)
+
         return event
 
     def passes_cuts(self, cms_event):
@@ -249,14 +261,8 @@ class CMSEventGetter(object):
         """Generator for events"""
         fwlite_events = Events(self.files)
 
-        ele_handle = Handle("std::vector<pat::Electron>")
-        mu_handle = Handle("std::vector<pat::Muon>")
-        jet_handle = Handle("std::vector<pat::Jet>")
-        met_handle = Handle("std::vector<pat::MET>")
-        vertex_handle = Handle("std::vector<reco::Vertex>")
-        handles = (ele_handle, mu_handle, jet_handle, met_handle, vertex_handle)
         for fwlite_event in fwlite_events:
-            event = self.make_event(fwlite_event, handles)
+            event = self.make_event(fwlite_event)
             if self.passes_cuts(event):
                 yield event
             del event
