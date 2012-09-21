@@ -5,6 +5,8 @@ from DataFormats.FWLite import Handle
 
 from ..cmsutilities import get_PF_isolation, get_list_from_handle
 
+from fnmatch import fnmatch
+
 class EventID(object) :
     """Class to contain run, luminosity block, and event number which uniquely identify an event"""
     def run_number():
@@ -63,7 +65,7 @@ class CMSEvent(object):
     jet_btag_cut = 1.7
     jet_btag = "trackCountingHighEffBJetTags"
 
-    def __init__(self, eventID, vertices, electrons, muons, jets, met, metadata={}):
+    def __init__(self, eventID, vertices, electrons, muons, jets, met, triggerresults, triggernames, metadata={}):
         """Initialize with collections of objects, except MET, which is a single object"""
         self.eventID = eventID
         self.vertices = vertices
@@ -71,6 +73,8 @@ class CMSEvent(object):
         self.muons = muons
         self.jets = jets
         self.met = met
+        self.triggerresults = triggerresults
+        self.triggernames = triggernames
         self.metadata = metadata
 
     def __repr__(self):
@@ -168,6 +172,16 @@ class CMSEvent(object):
         """Return the vertex collection"""
         return self.vertices
 
+    def passes_HLT(self, hltpath):
+        """Check to see if the event passes the given HLT path. Unix filename style wildcards are allowed"""
+        # first find triggers which pass the wildcard
+        triggers = [i for i in range(len(self.triggernames)) if fnmatch(self.triggernames[i], hltpath)] # might be a nicer way
+        for t in triggers:
+            if self.triggerresults.accept(t):
+                return True
+        return False
+
+
 class CMSEventGetter(object):
     """The main purpose of this class is to supply a generator (events) which feeds CMSEvents from a file.
     The rest of the class is to provide an interface to change parameters"""
@@ -189,6 +203,7 @@ class CMSEventGetter(object):
         self.pu_handle = Handle("std::vector<PileupSummaryInfo>")
         self.vdouble_handle = Handle("std::vector<double>")
         self.double_handle = Handle("double")
+        self.triggerresults_handle = Handle("edm::TriggerResults")
         self.do_PU = False
         self.do_SMS = False
 
@@ -217,6 +232,16 @@ class CMSEventGetter(object):
             return None
         return sum((pvi.getPU_NumInteractions() for pvi in puInfos if pvi.getBunchCrossing()==0))
 
+    def get_trigger_results(self, fwlite_event):
+        """Get the trigger names and results"""
+        fwlite_event.getByLabel("TriggerResults", "", "HLT", self.triggerresults_handle)
+        tr = self.triggerresults_handle.product()
+        tn = fwlite_event.object().triggerNames(tr)
+        tn_l = []
+        for i in range(tn.triggerNames().size()):
+            tn_l.append(tn.triggerName(i))
+        return tr, tn_l
+
     def get_sms_params(self, fwlite_event):
         """ Get the SMS model parameters"""
         sms_params = get_list_from_handle( fwlite_event, self.vdouble_handle,
@@ -239,9 +264,11 @@ class CMSEventGetter(object):
 
         eventID = EventID(fwlite_event)
 
+        trigger_results, trigger_names = self.get_trigger_results(fwlite_event)
 
-        event = self._parent(eventID, vertices, electrons, muons, jets, met)
-        del electrons, muons, jets, met, vertices
+
+        event = self._parent(eventID, vertices, electrons, muons, jets, met, trigger_results, trigger_names)
+        del electrons, muons, jets, met, vertices, trigger_results
 
         if self.do_PU :
             event.metadata['num_pu_vertices'] = self.get_num_pu_vertices( fwlite_event )
@@ -269,11 +296,12 @@ class CMSEventGetter(object):
 
 def test():
     """Run some tests to make sure everything works"""
-    files = ["/Users/nic/cms/August11MC/Signal/BsmMassesSkim_Summer11_Sync.root"]
+    files = ["root://osg-se.cac.cornell.edu//xrootd/path/cms/store/user/neggert/DoubleElectron/OSDil_MCT_HCP2012_DoubleEle_Run2012A/fea125730e58a5851afed480424a79dc/OSDil_MCT_HCP2012_9_2_ljK.root"]
     getter = CMSEventGetter(files)
     iterator = getter.events()
     for event in iterator :
         print event
+        print event.passes_HLT("HLT_Ele17_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_Ele8_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_v*")
 
 def test_dumb():
     """Generator for events"""
