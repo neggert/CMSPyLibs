@@ -68,11 +68,43 @@ def get_PF_isolation(lepton):
     iso = lepton.chargedHadronIso()+lepton.neutralHadronIso()+lepton.photonIso()
     return iso/lepton.pt()
 
+def get_effective_area(eta):
+    """Return effective area for 2011 data"""
+    aeta = abs(eta)
+    if aeta < 1.0:
+        return 0.10
+    elif aeta < 1.479:
+        return 0.12
+    elif aeta < 2.0:
+        return 0.085
+    elif aeta < 2.2:
+        return 0.11
+    elif aeta < 2.3:
+        return 0.12
+    elif aeta < 2.4:
+        return 0.12
+    else:
+        return 0.13
+
 def get_EA_PF_isolation(lepton, rho):
     """Return the particle flow isolation with the effective area correction for the input object"""
     ea = get_effective_area(lepton.eta())
     iso = lepton.chargedHadronIso()+max([lepton.neutralHadronIso()+lepton.photonIso()-ea*rho, 0.])
     return iso/lepton.pt()
+
+def get_delta_beta_PF_isolation(lepton):
+      iso_struct = lepton.pfIsolationR03()
+      iso = iso_struct.sumChargedHadronPt+max([0.,iso_struct.sumNeutralHadronEt+iso_struct.sumPhotonEt-0.5*iso_struct.sumPUPt]);
+      return iso/lepton.pt()
+
+def get_5_X_isolation(lepton, rho):
+    """Check particle type and get the appropriate isolation"""
+    if abs(lepton.pdgId()) == 11:
+        return get_EA_PF_isolation(lepton, rho)
+    elif abs(lepton.pdgId()) == 13:
+        return get_delta_beta_PF_isolation(lepton)
+    else:
+        raise RuntimeError("Trying to calculate isolation for non-lepton")
 
 def get_upstream_phi_res(p4Up, sigMatrix) :
     """Get the upstream phi resoluiton from it's four-vector and significance matrix"""

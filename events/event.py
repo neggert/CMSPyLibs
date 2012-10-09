@@ -5,6 +5,8 @@ from DataFormats.FWLite import Handle
 
 from ..cmsutilities import get_PF_isolation, get_list_from_handle
 
+from fnmatch import fnmatch
+
 class EventID(object) :
     """Class to contain run, luminosity block, and event number which uniquely identify an event"""
     def run_number():
@@ -63,7 +65,7 @@ class CMSEvent(object):
     jet_btag_cut = 1.7
     jet_btag = "trackCountingHighEffBJetTags"
 
-    def __init__(self, eventID, vertices, electrons, muons, jets, met, metadata={}):
+    def __init__(self, eventID, vertices, electrons, muons, jets, met, triggerresults, triggernames, metadata={}):
         """Initialize with collections of objects, except MET, which is a single object"""
         self.eventID = eventID
         self.vertices = vertices
@@ -71,6 +73,8 @@ class CMSEvent(object):
         self.muons = muons
         self.jets = jets
         self.met = met
+        self.triggerresults = triggerresults
+        self.triggernames = triggernames
         self.metadata = metadata
 
     def __repr__(self):
@@ -168,6 +172,16 @@ class CMSEvent(object):
         """Return the vertex collection"""
         return self.vertices
 
+    def passes_HLT(self, hltpath):
+        """Check to see if the event passes the given HLT path. Unix filename style wildcards are allowed"""
+        # first find triggers which pass the wildcard
+        triggers = [i for i in range(len(self.triggernames)) if fnmatch(self.triggernames[i], hltpath)] # might be a nicer way
+        for t in triggers:
+            if self.triggerresults.accept(t):
+                return True
+        return False
+
+
 class CMSEventGetter(object):
     """The main purpose of this class is to supply a generator (events) which feeds CMSEvents from a file.
     The rest of the class is to provide an interface to change parameters"""
@@ -181,6 +195,15 @@ class CMSEventGetter(object):
         self.jet_collection = "selectedPatJetsPFlow"
         self.met_collection = "patMETsPFlow"
         self.vertex_collection = "goodOfflinePrimaryVertices"
+        self.ele_handle = Handle("std::vector<pat::Electron>")
+        self.mu_handle = Handle("std::vector<pat::Muon>")
+        self.jet_handle = Handle("std::vector<pat::Jet>")
+        self.met_handle = Handle("std::vector<pat::MET>")
+        self.vertex_handle = Handle("std::vector<reco::Vertex>")
+        self.pu_handle = Handle("std::vector<PileupSummaryInfo>")
+        self.vdouble_handle = Handle("std::vector<double>")
+        self.double_handle = Handle("double")
+        self.triggerresults_handle = Handle("edm::TriggerResults")
         self.do_PU = False
         self.do_SMS = False
 
@@ -201,7 +224,7 @@ class CMSEventGetter(object):
         """Set the name of the MET collection"""
         self.met_collection = collection_name
 
-    def get_num_pu_vertices(self, fwlite_event, handle):
+    def get_num_pu_vertices(self, fwlite_event):
         """ Get the number of PU vertices"""
         try :
             puInfos = get_list_from_handle(fwlite_event, handle, "addPileupInfo")
@@ -209,38 +232,50 @@ class CMSEventGetter(object):
             return None
         return sum((pvi.getPU_NumInteractions() for pvi in puInfos if pvi.getBunchCrossing()==0))
 
-    def get_sms_params(self, fwlite_event, handle):
+    def get_trigger_results(self, fwlite_event):
+        """Get the trigger names and results"""
+        fwlite_event.getByLabel("TriggerResults", "", "HLT", self.triggerresults_handle)
+        tr = self.triggerresults_handle.product()
+        tn = fwlite_event.object().triggerNames(tr)
+        tn_l = []
+        for i in range(tn.triggerNames().size()):
+            tn_l.append(tn.triggerName(i))
+        return tr, tn_l
+
+    def get_sms_params(self, fwlite_event):
         """ Get the SMS model parameters"""
-        sms_params = get_list_from_handle( fwlite_event, handle, ['parameterPointProducer', 'modelParameters'])
+        sms_params = get_list_from_handle( fwlite_event, self.vdouble_handle,
+                       ['parameterPointProducer', 'modelParameters'])
         return sms_params
 
-    def get_rho(self, fwlite_event, handle):
+    def get_rho(self, fwlite_event):
         """Get the rho parameter"""
-        fwlite_event.getByLabel(["kt6PFJetsForIsolation", "rhos"], handle)
-        return handle.product()[0]
+        fwlite_event.getByLabel( ["kt6PFJetsForIsolation", "rho"], self.double_handle )
+        return self.double_handle.product()[0]
 
-    def make_event(self, fwlite_event, handles):
+    def make_event(self, fwlite_event):
         """Create a CMSEvent from the input FWLite event"""
 
-        ele_handle, mu_handle, jet_handle, met_handle, vertex_handle, pu_handle, sms_param_handle, rho_handle = handles
-
-        electrons = get_list_from_handle(fwlite_event, ele_handle, self.electron_collection)
-        muons     = get_list_from_handle(fwlite_event, mu_handle, self.muon_collection)
-        jets      = get_list_from_handle(fwlite_event, jet_handle, self.jet_collection)
-        met       = get_list_from_handle(fwlite_event, met_handle, self.met_collection)[0]
-        vertices  = get_list_from_handle(fwlite_event, vertex_handle, self.vertex_collection)
+        electrons = get_list_from_handle(fwlite_event, self.ele_handle, self.electron_collection)
+        muons     = get_list_from_handle(fwlite_event, self.mu_handle, self.muon_collection)
+        jets      = get_list_from_handle(fwlite_event, self.jet_handle, self.jet_collection)
+        met       = get_list_from_handle(fwlite_event, self.met_handle, self.met_collection)[0]
+        vertices  = get_list_from_handle(fwlite_event, self.vertex_handle, self.vertex_collection)
 
         eventID = EventID(fwlite_event)
 
+        trigger_results, trigger_names = self.get_trigger_results(fwlite_event)
 
-        event = self._parent(eventID, vertices, electrons, muons, jets, met)
-        del electrons, muons, jets, met, vertices
+
+        event = self._parent(eventID, vertices, electrons, muons, jets, met, trigger_results, trigger_names)
+        del electrons, muons, jets, met, vertices, trigger_results
 
         if self.do_PU :
-            event.metadata['num_pu_vertices'] = self.get_num_pu_vertices( fwlite_event, pu_handle )
+            event.metadata['num_pu_vertices'] = self.get_num_pu_vertices( fwlite_event )
         if self.do_SMS :
-            event.metadata['modelParams'] = self.get_sms_params(fwlite_event, sms_param_handle)
-        rhos = self.get_rho(fwlite_event, rho_handle)
+            event.metadata['modelParams'] = self.get_sms_params(fwlite_event)
+
+        event.metadata['rho'] = self.get_rho(fwlite_event)
 
         return event
 
@@ -253,24 +288,15 @@ class CMSEventGetter(object):
         """Generator for events"""
         fwlite_events = Events(self.files)
 
-        ele_handle = Handle("std::vector<pat::Electron>")
-        mu_handle = Handle("std::vector<pat::Muon>")
-        jet_handle = Handle("std::vector<pat::Jet>")
-        met_handle = Handle("std::vector<pat::MET>")
-        vertex_handle = Handle("std::vector<reco::Vertex>")
-        pu_handle = Handle("std::vector<PileupSummaryInfo>")
-        sms_param_handle = Handle("std::vector<double>")
-        rho_handle = Handle("double")
-        handles = (ele_handle, mu_handle, jet_handle, met_handle, vertex_handle, pu_handle, sms_param_handle, rho_handle)
         for fwlite_event in fwlite_events:
-            event = self.make_event(fwlite_event, handles)
+            event = self.make_event(fwlite_event)
             if self.passes_cuts(event):
                 yield event
             del event
 
 def test():
     """Run some tests to make sure everything works"""
-    files = ["/Users/nic/cms/August11MC/Signal/BsmMassesSkim_Summer11_Sync.root"]
+    files = ["root://osg-se.cac.cornell.edu//xrootd/path/cms/store/user/neggert/DoubleElectron/OSDil_MCT_HCP2012_DoubleEle_Run2012A/fea125730e58a5851afed480424a79dc/OSDil_MCT_HCP2012_9_2_ljK.root"]
     getter = CMSEventGetter(files)
     iterator = getter.events()
     for event in iterator :
