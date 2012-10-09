@@ -16,7 +16,7 @@ def hist_errorbars( data, xerrs=True, color="k", *args, **kwargs) :
             histkwargs[key] = value
 
     histvals, binedges = np.histogram( data, **histkwargs )
-    yerrs = np.sqrt(histvals)
+    yerrs = np.sqrt(histvals.tolist()) # no effing idea why tolist is necessary
 
     if norm :
         nevents = float(sum(histvals))

@@ -201,25 +201,28 @@ class CMSEventGetter(object):
         """Set the name of the MET collection"""
         self.met_collection = collection_name
 
-    def get_num_pu_vertices(self, fwlite_event):
+    def get_num_pu_vertices(self, fwlite_event, handle):
         """ Get the number of PU vertices"""
-        h = Handle("std::vector<PileupSummaryInfo>")
         try :
-            puInfos = get_list_from_handle(fwlite_event, h, "addPileupInfo")
+            puInfos = get_list_from_handle(fwlite_event, handle, "addPileupInfo")
         except Exception :
             return None
         return sum((pvi.getPU_NumInteractions() for pvi in puInfos if pvi.getBunchCrossing()==0))
 
-    def get_sms_params(self, fwlite_event):
+    def get_sms_params(self, fwlite_event, handle):
         """ Get the SMS model parameters"""
-        h = Handle("std::vector<double>")
-        sms_params = get_list_from_handle( fwlite_event, h, ['parameterPointProducer', 'modelParameters'])
+        sms_params = get_list_from_handle( fwlite_event, handle, ['parameterPointProducer', 'modelParameters'])
         return sms_params
+
+    def get_rho(self, fwlite_event, handle):
+        """Get the rho parameter"""
+        fwlite_event.getByLabel(["kt6PFJetsForIsolation", "rhos"], handle)
+        return handle.product()[0]
 
     def make_event(self, fwlite_event, handles):
         """Create a CMSEvent from the input FWLite event"""
 
-        ele_handle, mu_handle, jet_handle, met_handle, vertex_handle = handles
+        ele_handle, mu_handle, jet_handle, met_handle, vertex_handle, pu_handle, sms_param_handle, rho_handle = handles
 
         electrons = get_list_from_handle(fwlite_event, ele_handle, self.electron_collection)
         muons     = get_list_from_handle(fwlite_event, mu_handle, self.muon_collection)
@@ -234,9 +237,10 @@ class CMSEventGetter(object):
         del electrons, muons, jets, met, vertices
 
         if self.do_PU :
-            event.metadata['num_pu_vertices'] = self.get_num_pu_vertices( fwlite_event )
+            event.metadata['num_pu_vertices'] = self.get_num_pu_vertices( fwlite_event, pu_handle )
         if self.do_SMS :
-            event.metadata['modelParams'] = self.get_sms_params(fwlite_event)
+            event.metadata['modelParams'] = self.get_sms_params(fwlite_event, sms_param_handle)
+        rhos = self.get_rho(fwlite_event, rho_handle)
 
         return event
 
@@ -254,7 +258,10 @@ class CMSEventGetter(object):
         jet_handle = Handle("std::vector<pat::Jet>")
         met_handle = Handle("std::vector<pat::MET>")
         vertex_handle = Handle("std::vector<reco::Vertex>")
-        handles = (ele_handle, mu_handle, jet_handle, met_handle, vertex_handle)
+        pu_handle = Handle("std::vector<PileupSummaryInfo>")
+        sms_param_handle = Handle("std::vector<double>")
+        rho_handle = Handle("double")
+        handles = (ele_handle, mu_handle, jet_handle, met_handle, vertex_handle, pu_handle, sms_param_handle, rho_handle)
         for fwlite_event in fwlite_events:
             event = self.make_event(fwlite_event, handles)
             if self.passes_cuts(event):

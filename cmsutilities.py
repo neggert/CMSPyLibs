@@ -45,9 +45,33 @@ def get_TLorentzVector(cms_object):
     v = TLorentzVector(cms_object.px(), cms_object.py(), cms_object.pz(), cms_object.energy())
     return v
 
+def get_effective_area(eta):
+    """Return effective area for 2011 data"""
+    aeta = abs(eta)
+    if aeta < 1.0:
+        return 0.10
+    elif aeta < 1.479:
+        return 0.12
+    elif aeta < 2.0:
+        return 0.085
+    elif aeta < 2.2:
+        return 0.11
+    elif aeta < 2.3:
+        return 0.12
+    elif aeta < 2.4:
+        return 0.12
+    else:
+        return 0.13
+
 def get_PF_isolation(lepton):
     """Return the particle flow isolation for the input object"""
     iso = lepton.chargedHadronIso()+lepton.neutralHadronIso()+lepton.photonIso()
+    return iso/lepton.pt()
+
+def get_EA_PF_isolation(lepton, rho):
+    """Return the particle flow isolation with the effective area correction for the input object"""
+    ea = get_effective_area(lepton.eta())
+    iso = lepton.chargedHadronIso()+max([lepton.neutralHadronIso()+lepton.photonIso()-ea*rho, 0.])
     return iso/lepton.pt()
 
 def get_upstream_phi_res(p4Up, sigMatrix) :
@@ -61,7 +85,7 @@ def get_upstream_phi_res(p4Up, sigMatrix) :
     RI = copy(R) # R inverse
     RI.Invert()
     rotSig = RI*sigMatrix*R
-    
+
     return sqrt(rotSig(1,1)/p4Up.Pt()**2)
 
 def get_cov_matrix(p4, ptRes, phiRes):
@@ -74,15 +98,15 @@ def get_cov_matrix(p4, ptRes, phiRes):
     R[1][0] = -sin(phi)
     RI = copy(R) # R inverse
     RI.Invert()
-    
+
     # significance matrix in frame where pt points in x direction
     s = ROOT.TMatrixD(2,2)
     s[0][0] = ptRes**2
     s[0][1] = s[1][0] = 0.
     s[1][1] = p4.Et()**2*phiRes**2
-    
+
     # print s[0][0], s[0][1]
     # print s[1][0], s[1][1]
-    
+
     # rotate matrix into x-y frame
     return RI*s*R
