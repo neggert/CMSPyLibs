@@ -73,6 +73,10 @@ def hist_ratio( data_num, data_denom, weight_denom, xerrs=True, color="k", *args
     else :
         xerrs = None
 
+    ratio = ratio[ratio!=0]
+    ratio_err = ratio_err[ratio!=0]
+    bincenters = bincenters[ratio!=0]
+
     # retrieve the kwargs for errorbar
     ebkwargs = {}
     for key, value in kwargs.iteritems() :
@@ -86,5 +90,6 @@ def hist_ratio( data_num, data_denom, weight_denom, xerrs=True, color="k", *args
 
     if 'range' in kwargs.keys() :
         plt.xlim(*kwargs['range'])
+
 
     return out
