@@ -50,6 +50,9 @@ def hist_errorbars( data, xerrs=True, color="k", *args, **kwargs) :
 def hist_ratio( data_num, data_denom, weight_denom, xerrs=True, color="k", *args, **kwargs) :
     """Plot a histogram with error bars. Accepts any kwarg accepted by either numpy.histogram or pyplot.errorbar"""
     # pop off normed kwarg, since we want to handle it specially
+    norm = False
+    if 'normed' in kwargs.keys() :
+        norm = kwargs.pop('normed')
 
     # retrieve the kwargs for numpy.histogram
     histkwargs = {}
@@ -62,6 +65,12 @@ def hist_ratio( data_num, data_denom, weight_denom, xerrs=True, color="k", *args
 
     histvals2, binedges = np.histogram( data_denom, weights=weight_denom, **histkwargs )
     yerrs2 = np.sqrt(histvals2.tolist()) # no effing idea why tolist is necessary
+
+    if norm:
+        yerrs1 = yerrs1/sum(histvals1)
+        yerrs2 = yerrs2/sum(histvals2)
+        histvals1 = 1.*histvals1/sum(histvals1)
+        histvals2 = 1.*histvals2/sum(histvals2)
 
     ratio = histvals1/histvals2
     ratio_err = np.sqrt((yerrs1/histvals2)**2+(histvals1/histvals2**2*yerrs2)**2)
