@@ -49,42 +49,24 @@ def get_effective_area(eta):
     """Return effective area for 2011 data"""
     aeta = abs(eta)
     if aeta < 1.0:
-        return 0.10
-    elif aeta < 1.479:
-        return 0.12
-    elif aeta < 2.0:
-        return 0.085
-    elif aeta < 2.2:
-        return 0.11
-    elif aeta < 2.3:
-        return 0.12
-    elif aeta < 2.4:
-        return 0.12
-    else:
         return 0.13
+    elif aeta < 1.479:
+        return 0.14
+    elif aeta < 2.0:
+        return 0.07
+    elif aeta < 2.2:
+        return 0.09
+    elif aeta < 2.3:
+        return 0.11
+    elif aeta < 2.4:
+        return 0.11
+    else:
+        return 0.14
 
 def get_PF_isolation(lepton):
     """Return the particle flow isolation for the input object"""
     iso = lepton.chargedHadronIso()+lepton.neutralHadronIso()+lepton.photonIso()
     return iso/lepton.pt()
-
-def get_effective_area(eta):
-    """Return effective area for 2011 data"""
-    aeta = abs(eta)
-    if aeta < 1.0:
-        return 0.10
-    elif aeta < 1.479:
-        return 0.12
-    elif aeta < 2.0:
-        return 0.085
-    elif aeta < 2.2:
-        return 0.11
-    elif aeta < 2.3:
-        return 0.12
-    elif aeta < 2.4:
-        return 0.12
-    else:
-        return 0.13
 
 def get_EA_PF_isolation(lepton, rho):
     """Return the particle flow isolation with the effective area correction for the input object"""
