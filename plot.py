@@ -61,7 +61,7 @@ def hist_errorbars( data, xerrs=True, color="k", *args, **kwargs) :
 
     return out
 
-def hist_ratio( data_num, data_denom, weight_denom, xerrs=True, color="k", *args, **kwargs) :
+def hist_ratio( data_num, data_denom, weight_denom, weight_num=None, xerrs=True, color="k", *args, **kwargs) :
     """Plot a histogram with error bars. Accepts any kwarg accepted by either numpy.histogram or pyplot.errorbar"""
     # pop off normed kwarg, since we want to handle it specially
     norm = False
@@ -74,11 +74,21 @@ def hist_ratio( data_num, data_denom, weight_denom, xerrs=True, color="k", *args
         if key in inspect.getargspec(np.histogram).args :
             histkwargs[key] = value
 
-    histvals1, binedges = np.histogram( data_num, **histkwargs )
+    histvals1, binedges = np.histogram( data_num, weights=weight_num, **histkwargs )
     yerrs1 = np.sqrt(histvals1.tolist()) # no effing idea why tolist is necessary
+    if weight_num is not None:
+        histvals1_unweighted, binedges = np.histogram( data_num, **histkwargs)
+        yerrs1 = np.sqrt(histvals1_unweighted.tolist()) # no effing idea why tolist is necessary
+        hist1_ratios = histvals1/histvals1_unweighted
+        yerrs1 *= hist1_ratios
 
     histvals2, binedges = np.histogram( data_denom, weights=weight_denom, **histkwargs )
     yerrs2 = np.sqrt(histvals2.tolist()) # no effing idea why tolist is necessary
+    if weight_denom is not None:
+        histvals2_unweighted, binedges = np.histogram( data_denom, **histkwargs)
+        yerrs2 = np.sqrt(histvals2_unweighted.tolist()) # no effing idea why tolist is necessary
+        hist2_ratios = histvals2/histvals2_unweighted
+        yerrs2 *= hist2_ratios
 
     if norm:
         yerrs1 = yerrs1/sum(histvals1)
