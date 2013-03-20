@@ -19,15 +19,12 @@ def hist_errorbars( data, xerrs=True, color="k", *args, **kwargs) :
 
     weighted=False
     if "weights" in histkwargs.keys():
-        histkwargs.pop('weights')
+        hist_weights = np.asarray(histkwargs.pop('weights'))
         weighted = True
-    # import pdb;
-    # pdb.set_trace()
+
     if weighted:
-        histvals_unweighted, binedges = np.histogram(data, **histkwargs)
-        yerrs = np.sqrt(histvals_unweighted.tolist())
-        hist_ratios = histvals/histvals_unweighted
-        yerrs *= hist_ratios
+        sumw2, binedges = np.histogram(data, weights=hist_weights**2, **histkwargs)
+        yerrs = np.sqrt(sumw2)
     else:
         yerrs = np.sqrt(histvals.tolist()) # no effing idea why tolist is necessary
 
@@ -59,7 +56,7 @@ def hist_errorbars( data, xerrs=True, color="k", *args, **kwargs) :
     if 'range' in kwargs.keys() :
         plt.xlim(*kwargs['range'])
 
-    return out
+    return (histvals, yerrs, out)
 
 def hist_ratio( data_num, data_denom, weight_denom, weight_num=None, xerrs=True, color="k", *args, **kwargs) :
     """Plot a histogram with error bars. Accepts any kwarg accepted by either numpy.histogram or pyplot.errorbar"""
@@ -77,18 +74,14 @@ def hist_ratio( data_num, data_denom, weight_denom, weight_num=None, xerrs=True,
     histvals1, binedges = np.histogram( data_num, weights=weight_num, **histkwargs )
     yerrs1 = np.sqrt(histvals1.tolist()) # no effing idea why tolist is necessary
     if weight_num is not None:
-        histvals1_unweighted, binedges = np.histogram( data_num, **histkwargs)
-        yerrs1 = np.sqrt(histvals1_unweighted.tolist()) # no effing idea why tolist is necessary
-        hist1_ratios = histvals1/histvals1_unweighted
-        yerrs1 *= hist1_ratios
+        sumw2, binedges = np.histogram( data_num, weights=np.asarray(weight_num)**2, **histkwargs)
+        yerrs1 = np.sqrt(sumw2) # no effing idea why tolist is necessary
 
     histvals2, binedges = np.histogram( data_denom, weights=weight_denom, **histkwargs )
     yerrs2 = np.sqrt(histvals2.tolist()) # no effing idea why tolist is necessary
     if weight_denom is not None:
-        histvals2_unweighted, binedges = np.histogram( data_denom, **histkwargs)
-        yerrs2 = np.sqrt(histvals2_unweighted.tolist()) # no effing idea why tolist is necessary
-        hist2_ratios = histvals2/histvals2_unweighted
-        yerrs2 *= hist2_ratios
+        sumw2, binedges = np.histogram( data_denom, weights=np.asarray(weight_denom)**2, **histkwargs)
+        yerrs2 = np.sqrt(sumw2)
 
     if norm:
         yerrs1 = yerrs1/sum(histvals1)
@@ -106,9 +99,10 @@ def hist_ratio( data_num, data_denom, weight_denom, weight_num=None, xerrs=True,
     else :
         xerrs = None
 
-    ratio = ratio[ratio!=0]
-    ratio_err = ratio_err[ratio!=0]
-    bincenters = bincenters[ratio!=0]
+    ratio_err = ratio_err[ratio>0.]
+    bincenters = bincenters[ratio>0.]
+    ratio = ratio[ratio>0.]
+    
 
     # retrieve the kwargs for errorbar
     ebkwargs = {}
