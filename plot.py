@@ -2,7 +2,23 @@ import matplotlib.pyplot as plt
 import numpy as np
 import inspect
 
-def hist_errorbars( data, xerrs=True, color="k", *args, **kwargs) :
+def get_step_fill_between(x, y1, y2):
+
+    fill_x = np.zeros(2*len(x))
+    fill_x[::2] = x
+    fill_x[1:-1:2] = x[1:]
+    fill_x[-1] = 300
+    fill_y1 = np.zeros(fill_x.shape)
+    fill_y1[::2] = y1
+    fill_y1[1::2] = y1
+    fill_y2 = np.zeros(fill_x.shape)
+    fill_y2[::2] = y2
+    fill_y2[1::2] = y2
+
+    return np.append(fill_x, fill_x[::-1]), np.append(fill_y1, fill_y2[::-1])
+
+
+def hist_errorbars( data, xerrs=True, color="k", plotstyle="points", *args, **kwargs) :
     """Plot a histogram with error bars. Accepts any kwarg accepted by either numpy.histogram or pyplot.errorbar"""
     # pop off normed kwarg, since we want to handle it specially
     norm = False
@@ -10,20 +26,29 @@ def hist_errorbars( data, xerrs=True, color="k", *args, **kwargs) :
         norm = kwargs.pop('normed')
 
     # retrieve the kwargs for numpy.histogram
-    histkwargs = {}
+    histogram_kwargs = {}
+    hist_kwargs = {}
     for key, value in kwargs.iteritems() :
         if key in inspect.getargspec(np.histogram).args :
-            histkwargs[key] = value
-
-    histvals, binedges = np.histogram( data, **histkwargs )
+            histogram_kwargs[key] = value
+        if key in inspect.getargspec(plt.hist).args :
+            hist_kwargs[key] = value
 
     weighted=False
-    if "weights" in histkwargs.keys():
-        hist_weights = np.asarray(histkwargs.pop('weights'))
+    if "weights" in histogram_kwargs.keys():
+        hist_weights = histogram_kwargs.pop('weights')
         weighted = True
+        flatweights = np.hstack(hist_weights)
+    else :
+        flatweights = None
+
+
+    flatdata = np.hstack(data)
+
+    histvals, binedges = np.histogram( flatdata, weights=flatweights, **histogram_kwargs )
 
     if weighted:
-        sumw2, binedges = np.histogram(data, weights=hist_weights**2, **histkwargs)
+        sumw2, binedges = np.histogram(flatdata, weights=flatweights**2, **histogram_kwargs)
         yerrs = np.sqrt(sumw2)
     else:
         yerrs = np.sqrt(histvals.tolist()) # no effing idea why tolist is necessary
@@ -43,11 +68,19 @@ def hist_errorbars( data, xerrs=True, color="k", *args, **kwargs) :
         xerrs = None
 
     # retrieve the kwargs for errorbar
-    ebkwargs = {}
-    for key, value in kwargs.iteritems() :
-        if key in inspect.getargspec(plt.errorbar).args :
-            histkwargs[key] = value
-    out = plt.errorbar(bincenters, histvals, yerrs, xerrs, fmt=".", color=color, **ebkwargs)
+    if plotstyle=="points":
+        ebkwargs = {}
+        for key, value in kwargs.iteritems() :
+            if key in inspect.getargspec(plt.errorbar).args :
+                ebkwargs[key] = value
+        out = plt.errorbar(bincenters, histvals, yerrs, xerrs, fmt=".", color=color, **ebkwargs)
+
+    else :
+        out = []
+        out.append(plt.hist(data, normed=norm, color=color, **hist_kwargs))
+        err_up = histvals + yerrs
+        err_down = histvals - yerrs
+        out.append(plt.fill(*get_step_fill_between(binedges[:-1], err_down, err_up), hatch="////", fill=None, linewidth=0))
 
     if 'log' in kwargs.keys() :
         if kwargs['log'] :
