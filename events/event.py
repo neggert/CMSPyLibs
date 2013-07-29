@@ -65,10 +65,11 @@ class CMSEvent(object):
     jet_btag_cut = 1.7
     jet_btag = "trackCountingHighEffBJetTags"
 
-    def __init__(self, eventID, vertices, electrons, muons, jets, met, triggerresults, triggernames, metadata={}):
+    def __init__(self, eventID, vertices, genparticles, electrons, muons, jets, met, triggerresults, triggernames, metadata={}):
         """Initialize with collections of objects, except MET, which is a single object"""
         self.eventID = eventID
         self.vertices = vertices
+        self.genparticles = genparticles
         self.electrons = electrons
         self.muons = muons
         self.jets = jets
@@ -136,6 +137,10 @@ class CMSEvent(object):
         """Set the MET for the event"""
         self.met = met
 
+    def set_genparticles(self, genparticles):
+        """Set the MET for the event"""
+        self.genparticles = genparticles
+
     def get_isolated_electrons(self):
         """Return the electrons with relative PF isolation < ele_iso_cut"""
         return [e for e in self.get_electrons() if get_PF_isolation(e) < ele_iso_cut]
@@ -172,6 +177,10 @@ class CMSEvent(object):
         """Return the vertex collection"""
         return self.vertices
 
+    def get_genparticles(self):
+        """Return the genparticle collection"""
+        return self.genparticles
+
     def passes_HLT(self, hltpath):
         """Check to see if the event passes the given HLT path. Unix filename style wildcards are allowed"""
         # first find triggers which pass the wildcard
@@ -195,6 +204,8 @@ class CMSEventGetter(object):
         self.jet_collection = "selectedPatJetsPFlow"
         self.met_collection = "patMETsPFlow"
         self.vertex_collection = "goodOfflinePrimaryVertices"
+        self.genparticle_collection = "genParticles"
+        self.gen_handle = Handle("std::vector<reco::GenParticle>")
         self.ele_handle = Handle("std::vector<pat::Electron>")
         self.mu_handle = Handle("std::vector<pat::Muon>")
         self.jet_handle = Handle("std::vector<pat::Jet>")
@@ -204,6 +215,7 @@ class CMSEventGetter(object):
         self.vdouble_handle = Handle("std::vector<double>")
         self.double_handle = Handle("double")
         self.triggerresults_handle = Handle("edm::TriggerResults")
+        self.do_genparticles = True
         self.do_PU = False
         self.do_SMS = False
 
@@ -227,10 +239,17 @@ class CMSEventGetter(object):
     def get_num_pu_vertices(self, fwlite_event):
         """ Get the number of PU vertices"""
         try :
-            puInfos = get_list_from_handle(fwlite_event, handle, "addPileupInfo")
+            puInfos = get_list_from_handle(fwlite_event, self.pu_handle, "addPileupInfo")
         except Exception :
             return None
         return sum((pvi.getPU_NumInteractions() for pvi in puInfos if pvi.getBunchCrossing()==0))
+
+    def get_true_pu_vertices(self, fwlite_event):
+        try :
+            puInfos = get_list_from_handle(fwlite_event, self.pu_handle, "addPileupInfo")
+        except Exception :
+            return None
+        return puInfos[0].getTrueNumInteractions()
 
     def get_trigger_results(self, fwlite_event):
         """Get the trigger names and results"""
@@ -244,8 +263,8 @@ class CMSEventGetter(object):
 
     def get_sms_params(self, fwlite_event):
         """ Get the SMS model parameters"""
-        sms_params = get_list_from_handle( fwlite_event, self.vdouble_handle,
-                       ['parameterPointProducer', 'modelParameters'])
+        sms_params = get_list_from_handle( fwlite_event, self.double_handle,
+                       ['susyScanP1', ''])
         return sms_params
 
     def get_rho(self, fwlite_event):
@@ -256,6 +275,10 @@ class CMSEventGetter(object):
     def make_event(self, fwlite_event):
         """Create a CMSEvent from the input FWLite event"""
 
+        if self.do_genparticles:
+            gen_particles = get_list_from_handle(fwlite_event, self.gen_handle, self.genparticle_collection)
+        else :
+            gen_particles = []
         electrons = get_list_from_handle(fwlite_event, self.ele_handle, self.electron_collection)
         muons     = get_list_from_handle(fwlite_event, self.mu_handle, self.muon_collection)
         jets      = get_list_from_handle(fwlite_event, self.jet_handle, self.jet_collection)
@@ -267,11 +290,12 @@ class CMSEventGetter(object):
         trigger_results, trigger_names = self.get_trigger_results(fwlite_event)
 
 
-        event = self._parent(eventID, vertices, electrons, muons, jets, met, trigger_results, trigger_names)
-        del electrons, muons, jets, met, vertices, trigger_results
+        event = self._parent(eventID, vertices, gen_particles, electrons, muons, jets, met, trigger_results, trigger_names)
+        del gen_particles, electrons, muons, jets, met, vertices, trigger_results
 
         if self.do_PU :
             event.metadata['num_pu_vertices'] = self.get_num_pu_vertices( fwlite_event )
+            event.metadata['num_true_pu_vertices'] = self.get_true_pu_vertices( fwlite_event )
         if self.do_SMS :
             event.metadata['modelParams'] = self.get_sms_params(fwlite_event)
 
@@ -296,7 +320,7 @@ class CMSEventGetter(object):
 
 def test():
     """Run some tests to make sure everything works"""
-    files = ["root://osg-se.cac.cornell.edu//xrootd/path/cms/store/user/neggert/DoubleElectron/OSDil_MCT_HCP2012_DoubleEle_Run2012A/fea125730e58a5851afed480424a79dc/OSDil_MCT_HCP2012_9_2_ljK.root"]
+    files = ["root://osg-se.cac.cornell.edu//xrootd/path/cms/store/user/neggert/WWZNoGstarJets_8TeV-madgraph/OSDil_MCT_HCP2012_WWZNoGstarJets/47c3305489ab060ff201ab9227b9eec2/OSDil_MCT_HCP2012_1_1_o6a.root"]
     getter = CMSEventGetter(files)
     iterator = getter.events()
     for event in iterator :
