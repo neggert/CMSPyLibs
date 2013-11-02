@@ -49,7 +49,7 @@ def hist_errorbars( data, xerrs=True, color="k", plotstyle="points", *args, **kw
 
     if weighted:
         sumw2, binedges = np.histogram(flatdata, weights=flatweights**2, **histogram_kwargs)
-        yerrs = np.sqrt(sumw2)
+        yerrs = np.sqrt(sumw2.astype(float))
     else:
         yerrs = np.sqrt(histvals.tolist()) # no effing idea why tolist is necessary
 
@@ -108,21 +108,22 @@ def hist_ratio( data_num, data_denom, weight_denom, weight_num=None, xerrs=True,
     yerrs1 = np.sqrt(histvals1.tolist()) # no effing idea why tolist is necessary
     if weight_num is not None:
         sumw2, binedges = np.histogram( data_num, weights=np.asarray(weight_num)**2, **histkwargs)
-        yerrs1 = np.sqrt(sumw2) # no effing idea why tolist is necessary
+        yerrs1 = np.sqrt(sumw2.astype(float)) # no effing idea why tolist is necessary
 
     histvals2, binedges = np.histogram( data_denom, weights=weight_denom, **histkwargs )
     yerrs2 = np.sqrt(histvals2.tolist()) # no effing idea why tolist is necessary
     if weight_denom is not None:
         sumw2, binedges = np.histogram( data_denom, weights=np.asarray(weight_denom)**2, **histkwargs)
-        yerrs2 = np.sqrt(sumw2)
+        yerrs2 = np.sqrt(sumw2.astype(float))
 
     if norm:
-        yerrs1 = yerrs1/sum(histvals1)
-        yerrs2 = yerrs2/sum(histvals2)
-        histvals1 = 1.*histvals1/sum(histvals1)
-        histvals2 = 1.*histvals2/sum(histvals2)
+        yerrs1 = (yerrs1/sum(histvals1)).astype(np.float64)
+        yerrs2 = (yerrs2/sum(histvals2)).astype(np.float64)
+        histvals1 = (1.*histvals1/sum(histvals1)).astype(np.float64)
+        histvals2 = (1.*histvals2/sum(histvals2)).astype(np.float64)
 
-    ratio = histvals1/histvals2
+    
+    ratio = histvals1 / histvals2
     ratio_err = np.sqrt((yerrs1/histvals2)**2+(histvals1/histvals2**2*yerrs2)**2)
 
     bincenters = (binedges[1:]+binedges[:-1])/2
